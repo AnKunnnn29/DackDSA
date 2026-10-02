@@ -1,4 +1,25 @@
-#include "OrderManager.h"
+#ifndef DACKDSA_ORDERMANAGER_CPP
+#define DACKDSA_ORDERMANAGER_CPP
+
+#include "ProductLookup.cpp"
+
+namespace shop {
+using namespace std;
+struct OrderStore { dsa::HashTable<Order> records; };
+
+class OrderService {
+    ProductStore& products_;
+    OrderStore& orders_;
+    uint64_t nextId_ = 1;
+public:
+    OrderService(ProductStore& products, OrderStore& orders)
+        : products_(products), orders_(orders) {}
+    Result createOrder(const CreateOrderRequest& request);
+    const Order* findById(const string& id) const;
+    vector<Order> listOrders() const;
+};
+} // namespace shop
+
 #include <algorithm>
 #include <chrono>
 #include <cctype>
@@ -10,34 +31,34 @@ using namespace std;
 
 namespace shop {
 namespace {
-bool blank(const string& value) {
+bool orderManagerBlank(const string& value) {
     return value.empty() || all_of(value.begin(), value.end(),
         [](unsigned char c) { return isspace(c) != 0; });
 }
-bool validId(const string& id) {
-    return !blank(id) && none_of(id.begin(), id.end(),
+bool orderManagerValidId(const string& id) {
+    return !orderManagerBlank(id) && none_of(id.begin(), id.end(),
         [](unsigned char c) { return isspace(c) != 0; });
 }
-Result failure(ErrorCode code, const string& message) {
+Result orderManagerFailure(ErrorCode code, const string& message) {
     return {code, message, {}};
 }
 }
 Result OrderService::createOrder(const CreateOrderRequest& request) {
-    if (blank(request.customerName) || blank(request.customerPhone) || request.items.empty() ||
+    if (orderManagerBlank(request.customerName) || orderManagerBlank(request.customerPhone) || request.items.empty() ||
         request.priority < 1 || request.priority > 3)
-        return failure(ErrorCode::INVALID_INPUT, "Khach hang, danh sach hang hoac uu tien khong hop le.");
+        return orderManagerFailure(ErrorCode::INVALID_INPUT, "Khach hang, danh sach hang hoac uu tien khong hop le.");
 
     // Aggregate duplicate IDs before validating stock. Preserve first appearance.
     dsa::HashTable<size_t> positions;
     vector<RequestedItem> merged;
     const auto max = numeric_limits<int64_t>::max();
     for (const auto& item : request.items) {
-        if (!validId(item.productId) || item.quantity <= 0)
-            return failure(ErrorCode::INVALID_INPUT, "Ma san pham hoac so luong khong hop le.");
+        if (!orderManagerValidId(item.productId) || item.quantity <= 0)
+            return orderManagerFailure(ErrorCode::INVALID_INPUT, "Ma san pham hoac so luong khong hop le.");
         if (const auto* position = positions.find(item.productId)) {
             auto& quantity = merged[*position].quantity;
             if (item.quantity > max - quantity)
-                return failure(ErrorCode::AMOUNT_OVERFLOW, "Tong so luong vuot gioi han.");
+                return orderManagerFailure(ErrorCode::AMOUNT_OVERFLOW, "Tong so luong vuot gioi han.");
             quantity += item.quantity;
         } else {
             positions.insert(item.productId, merged.size());
@@ -54,14 +75,14 @@ Result OrderService::createOrder(const CreateOrderRequest& request) {
     for (const auto& item : merged) {
         auto* product = products_.records.find(item.productId);
         if (!product)
-            return failure(ErrorCode::PRODUCT_NOT_FOUND, "Khong tim thay san pham: " + item.productId);
+            return orderManagerFailure(ErrorCode::PRODUCT_NOT_FOUND, "Khong tim thay san pham: " + item.productId);
         if (product->stock < item.quantity)
-            return failure(ErrorCode::INSUFFICIENT_STOCK, "Khong du ton kho: " + item.productId);
+            return orderManagerFailure(ErrorCode::INSUFFICIENT_STOCK, "Khong du ton kho: " + item.productId);
         if (product->price != 0 && item.quantity > max / product->price)
-            return failure(ErrorCode::AMOUNT_OVERFLOW, "Thanh tien vuot gioi han.");
+            return orderManagerFailure(ErrorCode::AMOUNT_OVERFLOW, "Thanh tien vuot gioi han.");
         const Money subtotal = product->price * item.quantity;
         if (subtotal > max - order.totalAmount)
-            return failure(ErrorCode::AMOUNT_OVERFLOW, "Tong tien vuot gioi han.");
+            return orderManagerFailure(ErrorCode::AMOUNT_OVERFLOW, "Tong tien vuot gioi han.");
         order.totalAmount += subtotal;
         order.items.push_back({product->productId, product->name, item.quantity, product->price});
         affected.push_back(product);
@@ -78,13 +99,13 @@ Result OrderService::createOrder(const CreateOrderRequest& request) {
     // All allocations, including the response, precede stock changes.
     Result success{ErrorCode::NONE, "Tao don hang thanh cong.", id};
     if (!orders_.records.insert(id, move(order)))
-        return failure(ErrorCode::DUPLICATE_ID, "Ma don hang da ton tai.");
+        return orderManagerFailure(ErrorCode::DUPLICATE_ID, "Ma don hang da ton tai.");
     for (size_t i = 0; i < merged.size(); ++i)
         affected[i]->stock -= merged[i].quantity;
     return success;
 }
 const Order* OrderService::findById(const string& id) const {
-    return validId(id) ? orders_.records.find(id) : nullptr;
+    return orderManagerValidId(id) ? orders_.records.find(id) : nullptr;
 }
 vector<Order> OrderService::listOrders() const {
     vector<Order> orders;
@@ -99,3 +120,5 @@ vector<Order> OrderService::listOrders() const {
     return orders;
 }
 } // namespace shop
+
+#endif // DACKDSA_ORDERMANAGER_CPP

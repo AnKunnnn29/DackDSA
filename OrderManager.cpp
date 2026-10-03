@@ -5,7 +5,10 @@
 
 namespace shop {
 using namespace std;
-struct OrderStore { dsa::HashTable<Order> records; };
+struct OrderStore {
+    dsa::HashTable<Order> records;
+    uint64_t revision = 1;
+};
 
 class OrderService {
     ProductStore& products_;
@@ -95,6 +98,8 @@ Result OrderService::createOrder(const CreateOrderRequest& request) {
     } while (orders_.records.find(order.orderId));
     order.createdAt = chrono::duration_cast<chrono::milliseconds>(
         chrono::system_clock::now().time_since_epoch()).count();
+    order.historyHead = make_shared<StatusHistoryNode>(StatusHistoryNode{
+        OrderStatus::PENDING, order.createdAt, nullptr});
     const auto id = order.orderId;
     // All allocations, including the response, precede stock changes.
     Result success{ErrorCode::NONE, "Tao don hang thanh cong.", id};
@@ -102,6 +107,8 @@ Result OrderService::createOrder(const CreateOrderRequest& request) {
         return orderManagerFailure(ErrorCode::DUPLICATE_ID, "Ma don hang da ton tai.");
     for (size_t i = 0; i < merged.size(); ++i)
         affected[i]->stock -= merged[i].quantity;
+    ++products_.revision;
+    ++orders_.revision;
     return success;
 }
 const Order* OrderService::findById(const string& id) const {

@@ -45,6 +45,10 @@ class HashTable {
         buckets_.swap(replacement);
     }
 public:
+    void swap(HashTable& other) noexcept {
+        buckets_.swap(other.buckets_);
+        std::swap(size_, other.size_);
+    }
     explicit HashTable(size_t buckets = 16) : buckets_(buckets ? buckets : 1) {}
     HashTable(const HashTable&) = delete;
     HashTable& operator=(const HashTable&) = delete;
@@ -104,7 +108,10 @@ public:
 
 namespace shop {
 using namespace std;
-struct ProductStore { dsa::HashTable<Product> records; };
+struct ProductStore {
+    dsa::HashTable<Product> records;
+    uint64_t revision = 1;
+};
 
 class ProductService {
     ProductStore& products_;
@@ -146,6 +153,7 @@ Result ProductService::addProduct(Product product) {
     auto key = product.productId;
     if (!products_.records.insert(move(key), move(product)))
         return productLookupFailure(ErrorCode::DUPLICATE_ID, "Ma san pham da ton tai.");
+    ++products_.revision;
     return {};
 }
 const Product* ProductService::findById(const string& id) const {

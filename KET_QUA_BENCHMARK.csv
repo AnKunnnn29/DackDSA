@@ -1,0 +1,7 @@
+workload,records,operations,optimized_median_us,linear_median_us,checksum
+id_lookup,10000,1000,121.5,12344.6,39724780
+price_range_cached,10000,1000,355.6,9483.3,564367750
+priority_build_and_pop,10000,1000,365.7,7932.2,1492768
+id_lookup,100000,1000,210.2,199120,409124780
+price_range_cached,100000,1000,770.5,312765,5501267750
+priority_build_and_pop,100000,1000,4375.6,380565,1492768

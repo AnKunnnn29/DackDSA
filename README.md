@@ -40,6 +40,8 @@ Với Visual Studio, dùng generator mặc định và `cmake --build build --co
 
 ## Dữ liệu
 
+Bản mẫu dùng chung gồm **1.000 sản phẩm và 2.000 đơn hàng** nằm trong [sample-data](sample-data/README.md). Sao chép `sample-data/shop.csv` vào `data/shop.csv` nếu chưa có dữ liệu làm việc; sau đó chạy chương trình bình thường. Bản mẫu có đủ ưu tiên, trạng thái, khoảng giá và cảnh báo tồn kho để demo các chức năng nhóm.
+
 - Mặc định dùng `data/shop.csv`, tự nạp khi khởi động, tự lưu sau thao tác thay đổi thành công.
 - Dùng `--data duong-dan.csv` để chọn file khác.
 - `--demo` chỉ tạo P001/P002/P003 khi file chưa tồn tại; không ghi đè dữ liệu cũ.

@@ -4,6 +4,19 @@ Bản tích hợp **quản lý kho và xử lý đơn hàng thương mại đi�
 
 Đọc [báo cáo tích hợp](BAO_CAO_TICH_HOP.md) để xem phân công, nguồn từng module, thay đổi và giới hạn.
 
+## Giao diện web
+
+Mở [web/index.html](web/index.html) bằng Chrome hoặc Edge, không cần cài thư viện hay chạy server. Giao diện HTML/CSS và JavaScript thuần, hỗ trợ máy tính và điện thoại:
+
+- Tổng quan số lượng sản phẩm, đơn hàng, cảnh báo kho và giá trị đơn hoàn tất.
+- Tra sản phẩm theo mã/tên, lọc khoảng giá và tồn kho; xem chi tiết sản phẩm.
+- Tra đơn theo mã/khách hàng, lọc trạng thái và mức ưu tiên; xem mặt hàng và lịch sử.
+- Tạo đơn thử: kiểm tra số lượng/tồn kho, gộp sản phẩm trùng, tính tổng và trừ kho trong bản demo.
+
+`web/data.js` chứa bản sao dữ liệu mẫu 1.000 sản phẩm và 2.000 đơn từ `sample-data/shop.csv`. Thay đổi thử lưu bằng `localStorage` của trình duyệt; không sửa CSV hoặc gọi core C++. Muốn quay về mẫu gốc, xóa dữ liệu trang trong trình duyệt. Khi thay CSV, cần cập nhật lại `data.js`; hai bản không tự đồng bộ. Thông tin khách hàng là dữ liệu giả để trình diễn.
+
+Web hiện là giao diện demo độc lập. Để sử dụng các service C++ thật cần bổ sung HTTP API, rồi thay thao tác JavaScript bằng lời gọi API. Chuyển trạng thái, xử lý ưu tiên và quản lý thông tin kho vẫn dùng chương trình console.
+
 ## Chạy với g++
 
 ```powershell
@@ -76,4 +89,4 @@ Bản mẫu dùng chung gồm **1.000 sản phẩm và 2.000 đơn hàng** nằm
 | FileStorage.cpp | Lưu/đọc snapshot CSV |
 | main.cpp | Giao diện console tổng thể |
 
-Chưa có web/API và hỗ trợ nhiều luồng. Hash và binary heap là hai loại cấu trúc trung tâm tự cài đặt; vector/sort vẫn dùng thư viện chuẩn. Nhật ký AI, biện minh Q1–Q4, review và bảo vệ cá nhân cần mỗi thành viên tự hoàn thiện.
+Có giao diện web demo độc lập; chưa có HTTP API và hỗ trợ nhiều luồng. Hash và binary heap là hai loại cấu trúc trung tâm tự cài đặt; vector/sort vẫn dùng thư viện chuẩn. Nhật ký AI, biện minh Q1–Q4, review và bảo vệ cá nhân cần mỗi thành viên tự hoàn thiện.

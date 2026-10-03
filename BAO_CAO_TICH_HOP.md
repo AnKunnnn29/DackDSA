@@ -45,7 +45,7 @@ main.cpp                     Giao diện console
 - `main.cpp` là nơi duy nhất hiển thị menu và kết quả. Các service trả dữ liệu hoặc `Result`, không in thông báo nghiệp vụ trực tiếp.
 - `FileStorage.cpp` chỉ lưu/đọc dữ liệu. Tra cứu, khoảng giá, ưu tiên và trạng thái vẫn thực hiện trên cấu trúc trong bộ nhớ.
 - Các `.cpp` chức năng có include guard. Do nhóm chọn gộp header vào `.cpp`, **chỉ compile `main.cpp`** cho chương trình chính. Cấu hình hiện tại chỉ tạo executable dsa_demo.
-- Khi tích hợp web nhiều file biên dịch riêng, cần tách lại giao diện `.h`. Hiện chưa có web/API.
+- Khi tích hợp web nhiều file biên dịch riêng, cần tách lại giao diện `.h`. Giao diện demo `web/` hiện hoạt động độc lập, chưa nối HTTP API với core.
 
 ### Các thay đổi trong Models.h
 
@@ -249,7 +249,7 @@ Nhóm lấy nhánh `merge`, mỗi thành viên chạy phần mình và review co
 ## 12. Giới hạn và việc còn lại
 
 1. Core hiện một luồng. Nếu nối API nhiều luồng, phải đồng bộ toàn bộ thao tác liên quan kho/đơn; không chỉ khóa từng find.
-2. Chưa có web/API, xác thực, thanh toán hoặc phân trang. Đây là bản console tích hợp.
+2. Core chạy qua console, chưa có HTTP API, xác thực hoặc thanh toán. Web demo có phân trang trong trình duyệt nhưng không gọi service C++; dữ liệu thử lưu bằng localStorage.
 3. Save là snapshot toàn bộ sau mỗi thay đổi, có thể tốn thời gian ở dữ liệu lớn. Chưa có khóa nhiều tiến trình, transaction, fsync hoặc bảo đảm phục hồi sau mất điện; backup cần người dùng xử lý nếu thao tác trước bị gián đoạn.
 4. Chỉ mục giá là bản sao cache; heap có thể rebuild khi revision thay đổi. Khi workload cập nhật rất dày, cần đo thêm và cân nhắc chỉ mục cập nhật tăng dần.
 5. ID phân biệt hoa/thường. Số điện thoại mới kiểm tra không rỗng, chưa có quy tắc định dạng. Giá có thể bằng 0; minStock độc lập với stock hiện tại.

@@ -1,2 +1,11 @@
 build/
 *.exe
+data/
+*.tmp
+*.bak
+# Internal documents stay outside version control.
+*.md
+*.docx
+*.pdf
+*.pptx
+TaiLieuNoiBo/

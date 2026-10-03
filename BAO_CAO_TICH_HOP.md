@@ -45,7 +45,7 @@ main.cpp                     Giao diện console
 - `main.cpp` là nơi duy nhất hiển thị menu và kết quả. Các service trả dữ liệu hoặc `Result`, không in thông báo nghiệp vụ trực tiếp.
 - `FileStorage.cpp` chỉ lưu/đọc dữ liệu. Tra cứu, khoảng giá, ưu tiên và trạng thái vẫn thực hiện trên cấu trúc trong bộ nhớ.
 - Các `.cpp` chức năng có include guard. Do nhóm chọn gộp header vào `.cpp`, **chỉ compile `main.cpp`** cho chương trình chính. Cấu hình hiện tại chỉ tạo executable dsa_demo.
-- Khi tích hợp web nhiều file biên dịch riêng, cần tách lại giao diện `.h`. Giao diện demo `web/` hiện hoạt động độc lập, chưa nối HTTP API với core.
+- Nếu build các module thành nhiều đơn vị biên dịch riêng, cần tách lại giao diện `.h`. Server hiện compile `server.cpp` riêng, include module tương tự console; web gọi HTTP API của server.
 
 ### Các thay đổi trong Models.h
 
@@ -248,10 +248,24 @@ Nhóm lấy nhánh `merge`, mỗi thành viên chạy phần mình và review co
 
 ## 12. Giới hạn và việc còn lại
 
-1. Core hiện một luồng. Nếu nối API nhiều luồng, phải đồng bộ toàn bộ thao tác liên quan kho/đơn; không chỉ khóa từng find.
-2. Core chạy qua console, chưa có HTTP API, xác thực hoặc thanh toán. Web demo có phân trang trong trình duyệt nhưng không gọi service C++; dữ liệu thử lưu bằng localStorage.
+1. Core không tự bảo vệ khi nhiều luồng truy cập. Server HTTP dùng mutex khóa toàn bộ thao tác đọc/ghi core và lưu CSV; không chỉ khóa từng find.
+2. Có HTTP API cho nạp danh sách, tạo đơn, chuyển trạng thái/hủy đơn. Chưa có xác thực hoặc thanh toán; server chỉ nghe loopback. Bộ lọc/phân trang của web xử lý trong trình duyệt, chưa dùng chỉ mục giá hoặc heap của core.
 3. Save là snapshot toàn bộ sau mỗi thay đổi, có thể tốn thời gian ở dữ liệu lớn. Chưa có khóa nhiều tiến trình, transaction, fsync hoặc bảo đảm phục hồi sau mất điện; backup cần người dùng xử lý nếu thao tác trước bị gián đoạn.
 4. Chỉ mục giá là bản sao cache; heap có thể rebuild khi revision thay đổi. Khi workload cập nhật rất dày, cần đo thêm và cân nhắc chỉ mục cập nhật tăng dần.
 5. ID phân biệt hoa/thường. Số điện thoại mới kiểm tra không rỗng, chưa có quy tắc định dạng. Giá có thể bằng 0; minStock độc lập với stock hiện tại.
 6. Lịch sử đơn không cho sửa/xóa trực tiếp. Sản phẩm đã được tham chiếu không được xóa; nếu cần ẩn/ngừng bán phải bổ sung trường riêng.
 7. Nhóm cần hoàn thiện D2/D3 theo thiết kế cuối, Q1–Q4 và yêu cầu xung đột; mỗi người tự làm review D6, nhật ký AI/phản tư D7 và ôn D8. Mỗi thành viên cần tự kiểm chứng phần mình phụ trách và chuẩn bị bảo vệ cá nhân.
+
+## 13. Bổ sung web và HTTP API
+
+- `web/` có giao diện tổng quan, tra cứu danh sách, lọc giá/tồn kho, lọc trạng thái/ưu tiên và xem chi tiết. Mở HTML trực tiếp chỉ xem mẫu; mở qua server đọc dữ liệu CSV thật.
+- `server.cpp` bổ sung cầu nối do An tích hợp. HTTP dùng cpp-httplib, JSON dùng nlohmann/json; hai thư viện không thay các cấu trúc DSA của nhóm. Phiên bản, nguồn và giấy phép nằm trong `third_party/README.md`.
+- `GET /api/data` đọc danh sách từ ProductService và OrderService. `POST /api/orders` gọi OrderService của An; đơn giá/tổng tiền do core tính, không nhận tổng tiền từ web.
+- `POST /api/orders/{id}/status` gọi OrderStatusService của Huỳnh Khoa. Web hiển thị nút bước tiếp theo, chỉ cho hủy PENDING/PROCESSING và yêu cầu xác nhận hủy. Đơn COMPLETED/CANCELLED không có nút chuyển tiếp.
+- Yêu cầu trạng thái kèm `expectedStatus`; nếu một phiên khác đã cập nhật đơn, server trả 409, không áp dụng thao tác trên trạng thái cũ. Hủy lặp hoặc chuyển sai bước cũng bị core từ chối.
+- Server sao chép store vào vùng tạm, gọi service trên bản tạm, lưu CSV rồi swap store. Nếu ghi CSV thất bại thì trạng thái, lịch sử, tồn kho và danh sách đơn đang chạy giữ nguyên. Cách này sao chép toàn bộ dữ liệu mỗi thao tác, phù hợp demo nhưng cần đo/cải tiến nếu dữ liệu lớn.
+- Mutex đồng bộ các API trong cùng tiến trình. Không chạy console/server khác ghi cùng CSV; chưa có khóa liên tiến trình, bảo đảm mất điện hoặc triển khai công khai.
+- JSON dùng số nguyên trong giới hạn chính xác của JavaScript; API kiểm tra kiểu dữ liệu, ưu tiên, số lượng và từ chối giá trị vượt giới hạn. Core console vẫn dùng int64.
+- Đã kiểm tra build console/server, tạo đơn gộp mặt hàng trùng, trừ kho, đủ luồng đến COMPLETED, hủy/hoàn kho một lần, lịch sử, từ chối trạng thái cũ/sai bước, rollback khi CSV bị chặn, tải lại trang và dialog trên điện thoại. Kiểm tra HTTP/UI không dùng làm số liệu benchmark DSA.
+
+Hướng dẫn compile và chạy server có trong README. Dữ liệu localStorage của bản web demo cũ không được nhập vào CSV.

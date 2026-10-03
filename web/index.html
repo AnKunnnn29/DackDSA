@@ -61,7 +61,7 @@
     <main id="main" tabindex="-1">
       <div class="page-heading"><div><p class="eyebrow">QUẢN LÝ KHO & ĐƠN HÀNG</p><h1 id="page-title">Tổng quan</h1><p class="page-description" id="page-description">Theo dõi hoạt động và những việc cần xử lý.</p></div><button class="button primary" id="create-order-button"><svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>Tạo đơn hàng</button></div>
       <div id="page-content" aria-busy="true"><div class="loading">Đang chuẩn bị dữ liệu…</div></div>
-      <footer class="page-footer"><span>Kho & Đơn <span aria-hidden="true">·</span> Đồ án DSA</span><span>Dữ liệu mẫu · Thay đổi thử lưu trên trình duyệt</span></footer>
+      <footer class="page-footer"><span>Kho & Đơn <span aria-hidden="true">·</span> Đồ án DSA</span><span>Chạy server để thao tác với dữ liệu CSV</span></footer>
     </main>
   </div>
 
@@ -75,11 +75,12 @@
       <datalist id="product-options"></datalist><div id="order-items"></div>
       <div class="order-total"><span>Tổng giá trị đơn hàng</span><strong id="create-total">0 ₫</strong></div>
       <p id="create-error" class="form-error" role="alert" hidden></p>
-      <div class="dialog-footer"><span class="muted">Đơn thử · Lưu trên trình duyệt</span><button type="button" class="button secondary" data-close="create-dialog">Để sau</button><button type="submit" class="button primary">Tạo đơn hàng</button></div>
+      <div class="dialog-footer"><span class="muted">C++ kiểm tra và lưu CSV</span><button type="button" class="button secondary" data-close="create-dialog">Để sau</button><button type="submit" class="button primary">Tạo đơn hàng</button></div>
     </form>
   </dialog>
   <dialog id="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><h2 id="help-title">Bắt đầu sử dụng</h2><button class="icon-button" data-close="help-dialog" aria-label="Đóng hướng dẫn" autofocus><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div><p class="dialog-description">Đây là giao diện demo với 1.000 sản phẩm và 2.000 đơn mẫu.</p><ol class="help-list"><li>Vào <strong>Sản phẩm</strong> để tra mã, tên hoặc lọc khoảng giá.</li><li>Vào <strong>Đơn hàng</strong> để tìm mã đơn, lọc trạng thái và xem chi tiết.</li><li>Dùng <strong>Tạo đơn hàng</strong> để thử một đơn mới.</li><li>Vào <strong>Cảnh báo kho</strong> để xem hàng hết hoặc dưới ngưỡng.</li></ol><p class="help-note">Thay đổi trên web chỉ nằm trong trình duyệt này, không sửa file CSV của chương trình C++. Giao diện chưa kết nối API.</p></dialog>
+  <dialog id="cancel-dialog" aria-labelledby="cancel-title" aria-describedby="cancel-description"><div class="dialog-heading"><h2 id="cancel-title">Xác nhận hủy đơn</h2></div><p class="dialog-description" id="cancel-description"></p><p id="cancel-error" class="form-error" role="alert" hidden></p><div class="dialog-footer"><button class="button secondary" data-close="cancel-dialog" autofocus>Giữ đơn hàng</button><button class="button danger" id="confirm-cancel">Xác nhận hủy</button></div></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-heading"><h2 id="help-title">Bắt đầu sử dụng</h2><button class="icon-button" data-close="help-dialog" aria-label="Đóng hướng dẫn" autofocus><svg class="icon" aria-hidden="true"><use href="#i-close"/></svg></button></div><p class="dialog-description">Giao diện đọc dữ liệu CSV từ chương trình C++ khi mở qua server.</p><ol class="help-list"><li>Vào <strong>Sản phẩm</strong> để tra mã, tên hoặc lọc khoảng giá.</li><li>Vào <strong>Đơn hàng</strong> để tìm mã đơn, lọc trạng thái và xem chi tiết.</li><li>Dùng <strong>Tạo đơn hàng</strong> để tạo đơn và lưu CSV.</li><li>Vào <strong>Cảnh báo kho</strong> để xem hàng hết hoặc dưới ngưỡng.</li></ol><p class="help-note">Mở http://127.0.0.1:8080 sau khi chạy dsa_server để tạo đơn, chuyển trạng thái và hủy đơn. Các thao tác gọi core C++ và lưu CSV. Mở file HTML trực tiếp chỉ xem dữ liệu mẫu.</p></dialog>
   <div id="announcement" class="toast" role="status" aria-live="polite"></div>
 </body>
 </html>

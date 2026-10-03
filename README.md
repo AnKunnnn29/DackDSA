@@ -6,16 +6,33 @@ Bản tích hợp **quản lý kho và xử lý đơn hàng thương mại đi�
 
 ## Giao diện web
 
-Mở [web/index.html](web/index.html) bằng Chrome hoặc Edge, không cần cài thư viện hay chạy server. Giao diện HTML/CSS và JavaScript thuần, hỗ trợ máy tính và điện thoại:
+Giao diện HTML/CSS và JavaScript thuần, hỗ trợ máy tính và điện thoại. Để thao tác với core C++ và CSV, chạy server từ thư mục gốc repo:
+
+```powershell
+$env:PATH = 'C:\msys64\ucrt64\bin;' + $env:PATH
+g++ -std=c++17 -O2 server.cpp -o dsa_server.exe -lws2_32 -pthread
+# Chỉ sao chép mẫu nếu chưa có dữ liệu làm việc.
+New-Item -ItemType Directory -Force data | Out-Null
+if (!(Test-Path data/shop.csv)) { Copy-Item sample-data/shop.csv data/shop.csv }
+.\dsa_server.exe
+```
+
+Sau đó mở **http://127.0.0.1:8080** bằng Chrome hoặc Edge. Giữ server đang chạy; Ctrl+C để dừng. Với CMake, build theo mục bên dưới rồi chạy `.\build\dsa_server.exe`. Visual Studio dùng `.\build\Release\dsa_server.exe`.
+
+Có thể dùng `--data duong-dan.csv`, `--port 8081`, `--web duong-dan-thu-muc-web`. Server yêu cầu CSV hợp lệ có sẵn và dừng nếu nạp lỗi, không tự ghi đè dữ liệu. Chạy từ thư mục gốc để đường dẫn mặc định đúng.
 
 - Tổng quan số lượng sản phẩm, đơn hàng, cảnh báo kho và giá trị đơn hoàn tất.
 - Tra sản phẩm theo mã/tên, lọc khoảng giá và tồn kho; xem chi tiết sản phẩm.
 - Tra đơn theo mã/khách hàng, lọc trạng thái và mức ưu tiên; xem mặt hàng và lịch sử.
-- Tạo đơn thử: kiểm tra số lượng/tồn kho, gộp sản phẩm trùng, tính tổng và trừ kho trong bản demo.
+- Tạo đơn qua `OrderService` của An: kiểm tra số lượng/tồn kho, gộp sản phẩm trùng, tính tổng và lưu CSV.
+- Trong chi tiết đơn: Chờ xử lý → Đang xử lý → Đang giao → Hoàn tất, qua `OrderStatusService` của Huỳnh Khoa.
+- Hủy từ Chờ xử lý/Đang xử lý, có xác nhận và hoàn kho đúng một lần; lịch sử được cập nhật và lưu CSV.
 
-`web/data.js` chứa bản sao dữ liệu mẫu 1.000 sản phẩm và 2.000 đơn từ `sample-data/shop.csv`. Thay đổi thử lưu bằng `localStorage` của trình duyệt; không sửa CSV hoặc gọi core C++. Muốn quay về mẫu gốc, xóa dữ liệu trang trong trình duyệt. Khi thay CSV, cần cập nhật lại `data.js`; hai bản không tự đồng bộ. Thông tin khách hàng là dữ liệu giả để trình diễn.
+Mở [web/index.html](web/index.html) trực tiếp vẫn xem được dữ liệu mẫu từ `web/data.js`, nhưng các thao tác ghi bị tắt. Khi mở qua server, web đọc CSV qua API, không dùng localStorage và không đưa đơn thử của bản cũ vào CSV. Thông tin khách hàng trong mẫu là dữ liệu giả để trình diễn.
 
-Web hiện là giao diện demo độc lập. Để sử dụng các service C++ thật cần bổ sung HTTP API, rồi thay thao tác JavaScript bằng lời gọi API. Chuyển trạng thái, xử lý ưu tiên và quản lý thông tin kho vẫn dùng chương trình console.
+API hiện có `GET /api/data`, `POST /api/orders`, `POST /api/orders/{id}/status`. Chuyển trạng thái gửi `{ "status": "PROCESSING", "expectedStatus": "PENDING" }`; server từ chối dữ liệu trạng thái đã cũ hoặc bước chuyển không hợp lệ. Bộ lọc danh sách/phân trang hiện xử lý trong trình duyệt; xử lý heap ưu tiên và quản lý thông tin sản phẩm vẫn dùng console.
+
+Server chỉ nghe trên máy này (`127.0.0.1`), chưa có đăng nhập. Các yêu cầu API được khóa khi truy cập core; thao tác ghi chạy trên store tạm, lưu CSV thành công mới thay store đang chạy. **Không chạy console hoặc một server khác cùng ghi file CSV khi server web đang chạy**, vì chưa có khóa giữa các tiến trình. Hai thư viện HTTP/JSON đã lưu trong [third_party](third_party/README.md), không cần tải khi build.
 
 ## Chạy với g++
 
@@ -26,7 +43,7 @@ g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic main.cpp -o dsa_demo.exe
 .\dsa_demo.exe --demo
 ```
 
-Chỉ compile `main.cpp`: nó include các module `.cpp`. Không thêm các module đó vào cùng lệnh compile, tránh trùng định nghĩa. Mỗi executable là một đơn vị biên dịch; nếu sau này muốn build các module riêng biệt thì cần tách giao diện `.h`.
+Với console, chỉ compile `main.cpp`; với web server, chỉ compile `server.cpp`. Mỗi file include các module `.cpp`; không thêm các module đó vào cùng lệnh compile, tránh trùng định nghĩa. Mỗi executable là một đơn vị biên dịch; nếu sau này muốn build các module riêng biệt thì cần tách giao diện `.h`.
 
 ## Chạy bằng CMake
 
@@ -88,5 +105,7 @@ Bản mẫu dùng chung gồm **1.000 sản phẩm và 2.000 đơn hàng** nằm
 | OrderStatus.cpp | Chuyển trạng thái, hoàn kho và lịch sử |
 | FileStorage.cpp | Lưu/đọc snapshot CSV |
 | main.cpp | Giao diện console tổng thể |
+| server.cpp | Cầu nối HTTP API, tạo đơn và chuyển trạng thái qua core, lưu CSV |
+| web/ | Giao diện HTML/CSS/JavaScript |
 
-Có giao diện web demo độc lập; chưa có HTTP API và hỗ trợ nhiều luồng. Hash và binary heap là hai loại cấu trúc trung tâm tự cài đặt; vector/sort vẫn dùng thư viện chuẩn. Nhật ký AI, biện minh Q1–Q4, review và bảo vệ cá nhân cần mỗi thành viên tự hoàn thiện.
+Có HTTP API cho nạp dữ liệu, tạo đơn và chuyển trạng thái; server khóa các thao tác core bằng mutex. Hash và binary heap là hai loại cấu trúc trung tâm tự cài đặt; vector/sort vẫn dùng thư viện chuẩn. Nhật ký AI, biện minh Q1–Q4, review và bảo vệ cá nhân cần mỗi thành viên tự hoàn thiện.

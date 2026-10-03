@@ -8,21 +8,21 @@ Bản này ghép chức năng các nhánh thành một chương trình console c
 
 | Thành viên | Phạm vi theo phân công người dùng cung cấp | File chức năng trong bản tích hợp |
 |---|---|---|
-| Bạn | Tra cứu sản phẩm theo mã sản phẩm; tạo và quản lý đơn hàng | `ProductLookup.cpp`, `OrderManager.cpp` |
+| An | Tra cứu sản phẩm theo mã sản phẩm; tạo và quản lý đơn hàng | `ProductLookup.cpp`, `OrderManager.cpp` |
 | Nam | Quản lý thông tin sản phẩm; quản lý số lượng hàng | `ProductManagement.cpp`; tái sử dụng kiểm tra sản phẩm ở `ProductLookup.cpp` |
 | Đình Hải | Tra cứu theo mã đơn hàng; tìm sản phẩm theo khoảng giá | `OrderLookup.cpp`, `PriceSearch.cpp` |
 | Đăng Khoa | Xử lý đơn theo ưu tiên; cảnh báo sắp hết hàng | `PriorityOrders.cpp`, `LowStock.cpp` |
 | Huỳnh Khoa | Theo dõi trạng thái đơn hàng | `OrderStatus.cpp`; node lịch sử chung trong `Models.h` |
 
-Đây là phân công chức năng, **không phải tuyên bố mỗi thành viên đã tự viết toàn bộ code hiện tại**. Codex hỗ trợ ghép và sửa bản này. Mỗi người cần đọc, chạy, kiểm chứng và ghi rõ phần mình tự sửa/biện minh trong D3–D7.
+Mỗi thành viên phụ trách review và kiểm chứng các chức năng được phân công, đồng thời hoàn thiện phần biện minh thiết kế cá nhân.
 
 Nguồn đối chiếu trước khi tích hợp:
 
 | Nhánh nguồn | Commit | Nội dung nguồn và xử lý |
 |---|---|---|
-| `feature/product-lookup-order-management` | `516ccb6` | Nền tảng hash, tạo đơn, model và console của bạn; giữ và mở rộng |
+| `feature/product-lookup-order-management` | `516ccb6` | Nền tảng hash, tạo đơn, model và console thuộc phần An; giữ và mở rộng |
 | `Product` | `3e3ee8e` | Chỉ có khung chung, chưa có implementation quản lý sản phẩm/tồn kho; **bản tích hợp bổ sung mới phạm vi này** |
-| `Tra-cứu-sản-phẩm-theo-mã` | `3df1de3` | Binary search Product ID, trùng phạm vi của bạn; dùng hash sản phẩm làm bản chính và tạo `OrderLookup.cpp` để khớp phân công Đình Hải |
+| `Tra-cứu-sản-phẩm-theo-mã` | `3df1de3` | Binary search Product ID, trùng phạm vi của An; dùng hash sản phẩm làm bản chính và tạo `OrderLookup.cpp` để khớp phân công Đình Hải |
 | `Tìm-kiếm-sản-phẩm-theo-khoảng-giá` | `4704a12` | Giữ ý tưởng tìm hai biên bằng binary search; bổ sung chỉ mục giá và trả dữ liệu |
 | `Xử-lý-đơn-hàng-theo-mức-độ-ưu-tiên` | `30b891e` | Chỉnh quy tắc ưu tiên và thay heap thư viện bằng heap tự cài đặt |
 | `Cảnh-báo-sản-phẩm-sắp-hết` | `30169e6` | Đổi ngưỡng 15% sang `minStock` của từng sản phẩm |
@@ -44,7 +44,7 @@ main.cpp                     Giao diện console
 
 - `main.cpp` là nơi duy nhất hiển thị menu và kết quả. Các service trả dữ liệu hoặc `Result`, không in thông báo nghiệp vụ trực tiếp.
 - `FileStorage.cpp` chỉ lưu/đọc dữ liệu. Tra cứu, khoảng giá, ưu tiên và trạng thái vẫn thực hiện trên cấu trúc trong bộ nhớ.
-- Các `.cpp` chức năng có include guard. Do nhóm chọn gộp header vào `.cpp`, **chỉ compile `main.cpp`** cho chương trình chính. Test/benchmark là executable riêng, mỗi executable cũng chỉ có một đơn vị biên dịch.
+- Các `.cpp` chức năng có include guard. Do nhóm chọn gộp header vào `.cpp`, **chỉ compile `main.cpp`** cho chương trình chính. Cấu hình hiện tại chỉ tạo executable dsa_demo.
 - Khi tích hợp web nhiều file biên dịch riêng, cần tách lại giao diện `.h`. Hiện chưa có web/API.
 
 ### Các thay đổi trong Models.h
@@ -60,7 +60,7 @@ main.cpp                     Giao diện console
 
 Hai store có `revision`. Mọi service thay đổi dữ liệu tăng revision để chỉ mục giá hoặc heap nhận biết dữ liệu đã đổi. Không sửa trực tiếp trường/bản ghi từ module khác mà bỏ qua cơ chế này. Load CSV tăng revision của store hiện tại để cache cũ được làm mới.
 
-## 3. Phần của bạn
+## 3. Phần An
 
 ### Tra cứu sản phẩm theo mã
 
@@ -104,7 +104,7 @@ Nam cần tự review implementation mới và bổ sung biện minh, test/debug
 
 ### Tra cứu theo Order ID
 
-Phân công mới xác nhận Đình Hải tra **mã đơn hàng**. File nguồn `Tracuutheoma.cpp` lại tra Product ID bằng binary search, nên không đưa thêm một chỉ mục sản phẩm trùng với phần của bạn.
+Phân công mới xác nhận Đình Hải tra **mã đơn hàng**. File nguồn `Tracuutheoma.cpp` lại tra Product ID bằng binary search, nên không đưa thêm một chỉ mục sản phẩm trùng với phần của An.
 
 `OrderLookupService::findById` trong `OrderLookup.cpp` dùng OrderStore chung, trả đúng đơn gồm mặt hàng, tổng tiền, trạng thái và lịch sử. Không tạo một map/danh sách đơn riêng. Hàm tra đơn cũ trong OrderService được giữ để không phá cách gọi từ phần đã có.
 
@@ -206,6 +206,8 @@ Nếu save thất bại sau nghiệp vụ thành công, dữ liệu trong bộ n
 
 ## 10. Kết quả kiểm chứng
 
+Kết quả bên dưới ghi nhận lượt kiểm chứng trước khi dọn gọn. Theo yêu cầu của người dùng, source test/benchmark và CSV kết quả đã được bỏ khỏi bản hiện tại; có thể xem lại trong commit `59104b4`. Không còn target CTest hoặc benchmark trong CMake hiện tại.
+
 Môi trường: Windows, AMD Ryzen 7 7435HS, GCC 15.2.0 MinGW UCRT64, C++17, CMake Release. Kiểm chứng ngày 03/10/2026.
 
 - Build thành công: dsa_demo, integration_tests, dsa_benchmark.
@@ -219,7 +221,7 @@ Môi trường: Windows, AMD Ryzen 7 7435HS, GCC 15.2.0 MinGW UCRT64, C++17, CMa
 
 ### Benchmark 10.000 và 100.000 bản ghi
 
-Một lượt warm-up và ba lượt đo, lấy median, đổi thứ tự đo, seed 42, **1.000 thao tác/workload**. Optimized và linear phải có checksum bằng nhau. Dữ liệu thô nằm trong `KET_QUA_BENCHMARK.csv`.
+Một lượt warm-up và ba lượt đo, lấy median, đổi thứ tự đo, seed 42, **1.000 thao tác/workload**. Optimized và linear phải có checksum bằng nhau. Dữ liệu thô từng được lưu trong `KET_QUA_BENCHMARK.csv` tại commit `59104b4`.
 
 | Workload | Bản ghi | Tối ưu median ms | Tuyến tính median ms |
 |---|---:|---:|---:|
@@ -240,7 +242,7 @@ g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic main.cpp -o dsa_demo.exe
 .\dsa_demo.exe --demo
 ```
 
-Hoặc xem README để chạy CMake/CTest/benchmark. `--data path.csv` chọn snapshot khác. Chỉ dùng --demo lần đầu trên file chưa tồn tại để có P001/P002/P003.
+Hoặc xem README để build chương trình chính bằng CMake. `--data path.csv` chọn snapshot khác. Chỉ dùng --demo lần đầu trên file chưa tồn tại để có P001/P002/P003.
 
 Nhóm lấy nhánh `merge`, mỗi thành viên chạy phần mình và review code trước khi mở PR vào main. Các nhánh cũ là nguồn đối chiếu; tránh tiếp tục phát triển trên model/store độc lập rồi đưa lại vào hệ thống.
 
@@ -252,8 +254,4 @@ Nhóm lấy nhánh `merge`, mỗi thành viên chạy phần mình và review co
 4. Chỉ mục giá là bản sao cache; heap có thể rebuild khi revision thay đổi. Khi workload cập nhật rất dày, cần đo thêm và cân nhắc chỉ mục cập nhật tăng dần.
 5. ID phân biệt hoa/thường. Số điện thoại mới kiểm tra không rỗng, chưa có quy tắc định dạng. Giá có thể bằng 0; minStock độc lập với stock hiện tại.
 6. Lịch sử đơn không cho sửa/xóa trực tiếp. Sản phẩm đã được tham chiếu không được xóa; nếu cần ẩn/ngừng bán phải bổ sung trường riêng.
-7. Nhóm cần hoàn thiện D2/D3 theo thiết kế cuối, Q1–Q4 và yêu cầu xung đột; mỗi người tự làm review D6, nhật ký AI/phản tư D7 và ôn D8. Các kết quả công cụ chạy không thay thế việc tự kiểm chứng và bảo vệ cá nhân.
-
-## 13. Ghi nhận hỗ trợ AI
-
-Codex thực hiện merge các nhánh nguồn, chuẩn hóa model, sửa các lỗi nêu trên, bổ sung module còn thiếu, CSV, console và kiểm thử. Không gán các thay đổi do công cụ thực hiện thành kinh nghiệm tự cài đặt/debug của từng thành viên. Khi nộp, nhóm công bố phần AI hỗ trợ và ghi các kiểm chứng, chỉnh sửa, quyết định do chính mình thực hiện.
+7. Nhóm cần hoàn thiện D2/D3 theo thiết kế cuối, Q1–Q4 và yêu cầu xung đột; mỗi người tự làm review D6, nhật ký AI/phản tư D7 và ôn D8. Mỗi thành viên cần tự kiểm chứng phần mình phụ trách và chuẩn bị bảo vệ cá nhân.

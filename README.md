@@ -15,17 +15,15 @@ g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic main.cpp -o dsa_demo.exe
 
 Chỉ compile `main.cpp`: nó include các module `.cpp`. Không thêm các module đó vào cùng lệnh compile, tránh trùng định nghĩa. Mỗi executable là một đơn vị biên dịch; nếu sau này muốn build các module riêng biệt thì cần tách giao diện `.h`.
 
-## Chạy bằng CMake và kiểm thử
+## Chạy bằng CMake
 
 ```powershell
 cmake -S . -B build -G 'MinGW Makefiles' -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j 4
-ctest --test-dir build --output-on-failure
 .\build\dsa_demo.exe --demo
-.\build\dsa_benchmark.exe
 ```
 
-Với Visual Studio, dùng generator mặc định và `cmake --build build --config Release`; executable nằm ở `build/Release`, kiểm thử bằng `ctest --test-dir build -C Release --output-on-failure`.
+Với Visual Studio, dùng generator mặc định và `cmake --build build --config Release`; executable nằm ở `build/Release`.
 
 ## Menu chức năng
 
@@ -75,7 +73,5 @@ Với Visual Studio, dùng generator mặc định và `cmake --build build --co
 | OrderStatus.cpp | Chuyển trạng thái, hoàn kho và lịch sử |
 | FileStorage.cpp | Lưu/đọc snapshot CSV |
 | main.cpp | Giao diện console tổng thể |
-| tests/IntegrationTests.cpp | Kiểm thử cấu trúc, nghiệp vụ và persistence |
-| tests/Benchmark.cpp | Đo tra mã, khoảng giá và heap ở hai quy mô |
 
 Chưa có web/API và hỗ trợ nhiều luồng. Hash và binary heap là hai loại cấu trúc trung tâm tự cài đặt; vector/sort vẫn dùng thư viện chuẩn. Nhật ký AI, biện minh Q1–Q4, review và bảo vệ cá nhân cần mỗi thành viên tự hoàn thiện.

@@ -38,6 +38,18 @@ public:
         ++products_.revision;
         return {};
     }
+    Result updateClassification(const string& id, const string& category, const string& brand) {
+        if (category.size() > 400 || brand.size() > 400 ||
+            (!category.empty() && productLookupBlank(category)) || (!brand.empty() && productLookupBlank(brand)))
+            return {ErrorCode::INVALID_INPUT, "Phan loai san pham khong hop le.", {}};
+        auto* product = products_.records.find(id);
+        if (!product) return {ErrorCode::PRODUCT_NOT_FOUND, "Khong tim thay san pham.", {}};
+        string replacementCategory = category, replacementBrand = brand;
+        product->category.swap(replacementCategory);
+        product->brand.swap(replacementBrand);
+        ++products_.revision;
+        return {};
+    }
     Result removeProduct(const string& id) {
         if (!products_.records.find(id))
             return {ErrorCode::PRODUCT_NOT_FOUND, "Khong tim thay san pham.", {}};

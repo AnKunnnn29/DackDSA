@@ -148,7 +148,9 @@ Result productLookupFailure(ErrorCode code, const string& message) {
 }
 Result ProductService::addProduct(Product product) {
     if (!productLookupValidId(product.productId) || productLookupBlank(product.name) || product.price < 0 ||
-        product.stock < 0 || product.minStock < 0)
+        product.stock < 0 || product.minStock < 0 || product.category.size() > 400 || product.brand.size() > 400 ||
+        (!product.category.empty() && productLookupBlank(product.category)) ||
+        (!product.brand.empty() && productLookupBlank(product.brand)))
         return productLookupFailure(ErrorCode::INVALID_INPUT, "Thong tin san pham khong hop le.");
     auto key = product.productId;
     if (!products_.records.insert(move(key), move(product)))

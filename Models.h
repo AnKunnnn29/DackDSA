@@ -40,6 +40,8 @@ struct Product {
     Money price = 0;
     Quantity stock = 0;
     Quantity minStock = 0;
+    string category = "";
+    string brand = "";
 };
 struct OrderItem {
     string productId;

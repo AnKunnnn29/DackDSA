@@ -15,3 +15,9 @@ dialog{border:1px solid var(--border);border-radius:16px;background:white;color:
 @media(max-width:700px){.chart-summary{display:flex;flex-direction:column;align-items:flex-start;gap:6px}.chart-summary strong{font-size:24px;white-space:nowrap}.chart-summary span{font-size:11px}.chart{overflow-x:auto}.chart svg{min-width:480px;min-height:160px}.stat-card p{font-size:10px}.page-description{font-size:12px}.navigation a{font-size:12px}.page-footer{font-size:10px}.stock-info p,.stock-bottom{font-size:11px}.chart-footer{gap:10px;flex-wrap:wrap}}
 .danger{color:#b91c1c;border-color:#fecaca;background:#fff7f7}.danger:hover{background:#fee2e2}
 @media(max-width:700px){.timeline li{flex-wrap:wrap}.timeline small{margin-left:34px;flex-basis:100%}}
+/* Product actions share the existing detail dialog and form styles. */
+#product-edit-form>.field{margin-bottom:15px}
+#detail-dialog .dialog-footer{flex-wrap:wrap}
+.list-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px}
+.list-actions .muted{font-size:12px;flex:1;min-width:200px}
+.toolbar #price-search-button{align-self:flex-end}

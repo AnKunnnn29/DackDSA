@@ -1,6 +1,11 @@
 #include "third_party/httplib.h"
 #include "third_party/json.hpp"
 #include "FileStorage.cpp"
+#include "ProductManagement.cpp"
+#include "OrderLookup.cpp"
+#include "PriceSearch.cpp"
+#include "PriorityOrders.cpp"
+#include "LowStock.cpp"
 #include <iostream>
 #include <mutex>
 
@@ -10,7 +15,7 @@ using Json = nlohmann::json;
 
 namespace {
 Json productJson(const Product& p) {
-    return {{"id", p.productId}, {"name", p.name}, {"price", p.price}, {"stock", p.stock}, {"minStock", p.minStock}};
+    return {{"id", p.productId}, {"name", p.name}, {"price", p.price}, {"stock", p.stock}, {"minStock", p.minStock}, {"category", p.category}, {"brand", p.brand}};
 }
 Json orderJson(const Order& o) {
     Json items = Json::array(), history = Json::array();
@@ -66,6 +71,7 @@ int main(int argc, char** argv) {
             for (auto node = o.historyHead; node; node = node->next) if (node->changedAt > safe) representable = false; });
         if (!representable) { cerr << "Du lieu vuot gioi han so cua giao dien web.\n"; return 1; }
         mutex dataMutex;
+        PriceSearchService priceSearch(products);
         httplib::Server server;
         server.set_payload_max_length(65536);
         if (!server.set_mount_point("/", webRoot)) { cerr << "Khong tim thay thu muc web.\n"; return 1; }
@@ -74,9 +80,56 @@ int main(int argc, char** argv) {
             Json ps = Json::array(), os = Json::array();
             for (const auto& p : ProductService(products).listProducts()) ps.push_back(productJson(p));
             for (const auto& o : OrderService(products, orders).listOrders()) os.push_back(orderJson(o));
-            reply(res, {{"products", ps}, {"orders", os}});
+            Json warnings = Json::array();
+            for (const auto& p : LowStockService(products).warnings()) warnings.push_back(productJson(p));
+            reply(res, {{"products", ps}, {"orders", os}, {"warnings", warnings}});
         });
-        auto mutate = [&](const httplib::Request& req, httplib::Response& res, bool changeStatus) {
+        server.Get("/api/products/lookup", [&](const auto& req, auto& res) {
+            lock_guard<mutex> lock(dataMutex);
+            const auto* p = ProductService(products).findById(req.get_param_value("id"));
+            if (!p) { failure(res, "Khong tim thay san pham.", 404); return; }
+            reply(res, {{"product", productJson(*p)}});
+        });
+        server.Get("/api/orders/lookup", [&](const auto& req, auto& res) {
+            lock_guard<mutex> lock(dataMutex);
+            const auto* o = OrderLookupService(orders).findById(req.get_param_value("id"));
+            if (!o) { failure(res, "Khong tim thay don hang.", 404); return; }
+            reply(res, {{"order", orderJson(*o)}});
+        });
+        server.Get("/api/products/range", [&](const auto& req, auto& res) {
+            int64_t minPrice, maxPrice;
+            if (!csv::integer(req.get_param_value("min"), minPrice) || !csv::integer(req.get_param_value("max"), maxPrice) ||
+                minPrice > safe || maxPrice > safe) { failure(res, "Khoang gia khong hop le."); return; }
+            lock_guard<mutex> lock(dataMutex);
+            vector<Product> matches;
+            auto result = priceSearch.findInRange(minPrice, maxPrice, matches);
+            if (!result.ok()) { failure(res, result.message); return; }
+            Json ps = Json::array(); for (const auto& p : matches) ps.push_back(productJson(p));
+            reply(res, {{"products", ps}});
+        });
+        server.Get("/api/export", [&](const auto&, auto& res) {
+            lock_guard<mutex> lock(dataMutex);
+            ifstream input(filename, ios::binary);
+            if (!input) { failure(res, "Khong doc duoc CSV.", 500); return; }
+            string data((istreambuf_iterator<char>(input)), istreambuf_iterator<char>());
+            res.set_header("Content-Disposition", "attachment; filename=shop.csv");
+            res.set_header("Cache-Control", "no-store");
+            res.set_content(data, "text/csv; charset=utf-8");
+        });
+        server.Post("/api/save", [&](const auto& req, auto& res) {
+            const string origin = req.get_header_value("Origin");
+            if ((!origin.empty() && origin != "http://127.0.0.1:" + to_string(port) && origin != "http://localhost:" + to_string(port)) ||
+                req.get_header_value("Content-Type").find("application/json") != 0) {
+                failure(res, "Yeu cau phai den tu giao dien cung server va dung JSON.", 403); return;
+            }
+            try {
+                lock_guard<mutex> lock(dataMutex);
+                const auto result = storage.save(filename);
+                if (!result.ok()) { failure(res, result.message, 500); return; }
+                reply(res, {{"message", "Da luu CSV."}});
+            } catch (const exception&) { failure(res, "Khong the luu CSV.", 500); }
+        });
+        auto mutate = [&](const httplib::Request& req, httplib::Response& res, int operation) {
             const string origin = req.get_header_value("Origin");
             if ((!origin.empty() && origin != "http://127.0.0.1:" + to_string(port) && origin != "http://localhost:" + to_string(port)) ||
                 req.get_header_value("Content-Type").find("application/json") != 0) {
@@ -91,7 +144,11 @@ int main(int argc, char** argv) {
                 orders.records.forEach([&](const auto& id, const Order& o) { stagedOrders.records.insert(id, o); });
                 Result result;
                 string id;
-                if (changeStatus) {
+                if (operation == 2) {
+                    OrderStatusService status(stagedProducts, stagedOrders);
+                    result = PriorityOrderService(stagedOrders, status).processNext();
+                    id = result.orderId;
+                } else if (operation == 1) {
                     id = req.matches[1].str();
                     auto* current = stagedOrders.records.find(id);
                     if (!current) { failure(res, "Khong tim thay don hang.", 404); return; }
@@ -127,7 +184,7 @@ int main(int argc, char** argv) {
                 if (!result.ok()) { failure(res, result.message, 500); return; }
                 products.records.swap(stagedProducts.records); orders.records.swap(stagedOrders.records);
                 ++products.revision; ++orders.revision;
-                res.status = changeStatus ? 200 : 201;
+                res.status = operation == 0 ? 201 : 200;
                 res.set_header("Cache-Control", "no-store");
                 res.set_content(responseText, "application/json; charset=utf-8");
             } catch (const Json::exception&) { failure(res, "JSON thieu truong hoac sai kieu du lieu."); }
@@ -136,6 +193,62 @@ int main(int argc, char** argv) {
         };
         server.Post("/api/orders", [&](const auto& req, auto& res) { mutate(req, res, false); });
         server.Post(R"(/api/orders/(ORD[0-9]+)/status)", [&](const auto& req, auto& res) { mutate(req, res, true); });
+        server.Post("/api/orders/process-next", [&](const auto& req, auto& res) { mutate(req, res, 2); });
+        auto mutateProduct = [&](const httplib::Request& req, httplib::Response& res, int operation) {
+            const string origin = req.get_header_value("Origin");
+            if ((!origin.empty() && origin != "http://127.0.0.1:" + to_string(port) && origin != "http://localhost:" + to_string(port)) ||
+                req.get_header_value("Content-Type").find("application/json") != 0) {
+                failure(res, "Yeu cau phai den tu giao dien cung server va dung JSON.", 403); return;
+            }
+            try {
+                const auto body = Json::parse(req.body);
+                const string id = body.at("id").get<string>();
+                lock_guard<mutex> lock(dataMutex);
+                const auto* current = products.records.find(id);
+                if (operation != 2 && !current) { failure(res, "Khong tim thay san pham.", 404); return; }
+                if (operation != 2 && body.at("expectedProduct") != productJson(*current)) {
+                    failure(res, "San pham da thay doi. Dong form va tai lai trang truoc khi thao tac.", 409); return;
+                }
+                ProductStore stagedProducts; OrderStore stagedOrders;
+                products.records.forEach([&](const auto& key, const Product& p) { stagedProducts.records.insert(key, p); });
+                orders.records.forEach([&](const auto& key, const Order& o) { stagedOrders.records.insert(key, o); });
+                ProductManagementService management(stagedProducts, stagedOrders);
+                Result result;
+                if (operation == 2) {
+                    Product p; p.productId = id; p.name = body.at("name").get<string>();
+                    p.price = integer(body.at("price")); p.stock = integer(body.at("stock")); p.minStock = integer(body.at("minStock"));
+                    p.category = body.value("category", string{}); p.brand = body.value("brand", string{});
+                    if (id.size() > 120 || p.name.size() > 400) throw invalid_argument("Ma hoac ten san pham qua dai.");
+                    result = management.addProduct(move(p));
+                } else if (operation == 3) {
+                    result = management.removeProduct(id);
+                } else if (operation == 1) {
+                    result = management.changeStock(id, integer(body.at("quantity")), body.at("incoming").get<bool>());
+                } else {
+                    const string name = body.at("name").get<string>();
+                    if (name.size() > 400) throw invalid_argument("Ten san pham qua dai.");
+                    result = management.updateInfo(id, name, integer(body.at("price")), integer(body.at("minStock")));
+                    if (result.ok()) result = management.updateClassification(id,
+                        body.value("category", current->category), body.value("brand", current->brand));
+                }
+                if (!result.ok()) { failure(res, result.message); return; }
+                const auto* changed = stagedProducts.records.find(id);
+                if (changed && changed->stock > safe) { failure(res, "Ton kho vuot gioi han giao dien."); return; }
+                const string response = (operation == 3 ? Json{{"deletedId", id}} : Json{{"product", productJson(*changed)}}).dump();
+                result = FileStorage(stagedProducts, stagedOrders).save(filename);
+                if (!result.ok()) { failure(res, result.message, 500); return; }
+                products.records.swap(stagedProducts.records);
+                ++products.revision;
+                res.set_header("Cache-Control", "no-store");
+                res.set_content(response, "application/json; charset=utf-8");
+            } catch (const Json::exception&) { failure(res, "JSON thieu truong hoac sai kieu du lieu."); }
+              catch (const invalid_argument& e) { failure(res, e.what()); }
+              catch (const exception&) { failure(res, "Server khong the xu ly yeu cau.", 500); }
+        };
+        server.Post("/api/products/update", [&](const auto& req, auto& res) { mutateProduct(req, res, false); });
+        server.Post("/api/products/stock", [&](const auto& req, auto& res) { mutateProduct(req, res, true); });
+        server.Post("/api/products/add", [&](const auto& req, auto& res) { mutateProduct(req, res, 2); });
+        server.Post("/api/products/remove", [&](const auto& req, auto& res) { mutateProduct(req, res, 3); });
         cout << "Mo http://127.0.0.1:" << port << " | CSV: " << filename << "\nKhong chay console cung ghi CSV khi server dang hoat dong.\n" << flush;
         if (!server.listen("127.0.0.1", port)) { cerr << "Khong mo duoc port.\n"; return 1; }
     } catch (const exception& e) { cerr << e.what() << '\n'; return 1; }

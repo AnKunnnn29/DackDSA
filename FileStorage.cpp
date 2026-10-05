@@ -74,9 +74,9 @@ public:
             return {ErrorCode::IO_ERROR, "File .tmp/.bak da ton tai; kiem tra truoc khi luu lai.", {}};
         ofstream output(temporary, ios::binary);
         if (!output) return {ErrorCode::IO_ERROR, "Khong mo duoc file de luu.", {}};
-        csv::write(output, {"VERSION", "1"});
+        csv::write(output, {"VERSION", "2"});
         products_.records.forEach([&](const auto&, const Product& p) {
-            csv::write(output, {"PRODUCT", p.productId, p.name, to_string(p.price), to_string(p.stock), to_string(p.minStock)});
+            csv::write(output, {"PRODUCT", p.productId, p.name, to_string(p.price), to_string(p.stock), to_string(p.minStock), p.category, p.brand});
         });
         orders_.records.forEach([&](const auto&, const Order& o) {
             csv::write(output, {"ORDER", o.orderId, o.customerName, o.customerPhone, to_string(o.totalAmount),
@@ -121,7 +121,9 @@ public:
         ifstream input(filename, ios::binary);
         if (!input) return {ErrorCode::IO_ERROR, "Khong mo duoc file CSV.", {}};
         vector<vector<string>> rows;
-        if (!csv::read(input, rows) || rows.empty() || rows.front() != vector<string>{"VERSION", "1"}) return invalid();
+        if (!csv::read(input, rows) || rows.empty()) return invalid();
+        const bool legacy = rows.front() == vector<string>{"VERSION", "1"};
+        if (!legacy && rows.front() != vector<string>{"VERSION", "2"}) return invalid();
         ProductStore loadedProducts;
         OrderStore loadedOrders;
         ProductService loader(loadedProducts);
@@ -130,9 +132,25 @@ public:
             if (r.empty()) return invalid();
             if (r[0] == "PRODUCT") {
                 Product p;
-                if (r.size() != 6 || !csv::integer(r[3], p.price) || !csv::integer(r[4], p.stock) ||
+                if (r.size() != (legacy ? 6u : 8u) || !csv::integer(r[3], p.price) || !csv::integer(r[4], p.stock) ||
                     !csv::integer(r[5], p.minStock)) return invalid();
                 p.productId = r[1]; p.name = r[2];
+                if (legacy) {
+                    // Classify the existing demo catalog once while loading the old format.
+                    const pair<const char*, const char*> types[] = {
+                        {"Gia do laptop", "Giá đỡ laptop"}, {"Laptop", "Laptop"}, {"Chuot", "Chuột"},
+                        {"Ban phim", "Bàn phím"}, {"Man hinh", "Màn hình"}, {"Tai nghe", "Tai nghe"},
+                        {"SSD", "Ổ cứng SSD"}, {"O cung HDD", "Ổ cứng HDD"}, {"RAM", "RAM"},
+                        {"Webcam", "Webcam"}, {"Loa", "Loa"}, {"Sac du phong", "Sạc dự phòng"},
+                        {"Cap USB", "Cáp kết nối"}, {"Router", "Router WiFi"}, {"USB", "USB"},
+                        {"Microphone", "Microphone"}, {"May in", "Máy in"}, {"Bo chia HDMI", "Bộ chia HDMI"}};
+                    for (const auto& type : types)
+                        if (p.name.rfind(type.first, 0) == 0) { p.category = type.second; break; }
+                    const char* brands[] = {"Logitech", "Keychron", "Corsair", "Razer", "Dell", "Sony", "Samsung",
+                        "Kingston", "Asus", "JBL", "Anker", "Ugreen", "TP-Link", "Sandisk", "Baseus", "Seagate", "HyperX", "Canon"};
+                    for (const auto* brand : brands)
+                        if (p.name.find(brand) != string::npos) { p.brand = brand; break; }
+                } else { p.category = r[6]; p.brand = r[7]; }
                 if (!loader.addProduct(move(p)).ok()) return invalid();
             } else if (r[0] == "ORDER") {
                 Order o; int64_t priority;
